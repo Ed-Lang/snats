@@ -2,12 +2,17 @@
 package main
 
 import (
-	"fmt"
+	//	"fmt"
 	"log"
-	"net/url"
-	"Ed-Lang/snats"
+	//	"net/url"
+	"snatsv5/panes"
+
+	//	"fyne.io/fyne/cmd/fyne_demo/tutorials"
+	//	"fyne.io/fyne/cmd/fyne_demo/tutorials"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+
+	//	"fyne.io/fyne/v2/cmd/fyne_demo/tutorials"
 	"fyne.io/fyne/v2/cmd/fyne_settings/settings"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -17,16 +22,17 @@ import (
 
 const preferenceCurrentTutorial = "currentTutorial"
 
-var Password string
-var Server string
-var Caroot string
-var Queue string
-var Queuepassword string
-
 var topWindow fyne.Window
 
+var Password string      // encrypt file password
+var Caroot string        // server caroot certificate
+var Queue string         // server queue
+var Queuepassword string // server queue password
+var Server string        // server url
+var Aeskey byte          // aes encryption bytes
+
 func main() {
-	a := app.NewWithID("nh3000nats")
+	a := app.NewWithID("io.nh3000.nats")
 	a.SetIcon(theme.FyneLogo())
 	makeTray(a)
 	logLifecycle(a)
@@ -40,7 +46,7 @@ func main() {
 	title := widget.NewLabel("Component name")
 	intro := widget.NewLabel("An introduction would probably go\nhere, as well as a")
 	intro.Wrapping = fyne.TextWrapWord
-	setTutorial := func(t snats.Snats) {
+	setTutorial := func(t panes.Panes) {
 		if fyne.CurrentDevice().IsMobile() {
 			child := a.NewWindow(t.Title)
 			topWindow = child
@@ -81,7 +87,6 @@ func logLifecycle(a fyne.App) {
 	})
 	a.Lifecycle().SetOnEnteredForeground(func() {
 		log.Println("Lifecycle: Entered Foreground")
-		log.Println(snats.Password)
 	})
 	a.Lifecycle().SetOnExitedForeground(func() {
 		log.Println("Lifecycle: Exited Foreground")
@@ -89,93 +94,56 @@ func logLifecycle(a fyne.App) {
 }
 
 func makeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
-	newItem := fyne.NewMenuItem("New", nil)
-	checkedItem := fyne.NewMenuItem("Checked", nil)
-	checkedItem.Checked = true
-	disabledItem := fyne.NewMenuItem("Disabled", nil)
-	disabledItem.Disabled = true
-	otherItem := fyne.NewMenuItem("Other", nil)
-	mailItem := fyne.NewMenuItem("Mail", func() { fmt.Println("Menu New->Other->Mail") })
-	mailItem.Icon = theme.MailComposeIcon()
-	otherItem.ChildMenu = fyne.NewMenu("",
-		fyne.NewMenuItem("Project", func() { fmt.Println("Menu New->Other->Project") }),
-		mailItem,
-	)
-	fileItem := fyne.NewMenuItem("File", func() { fmt.Println("Menu New->File") })
-	fileItem.Icon = theme.FileIcon()
-	dirItem := fyne.NewMenuItem("Directory", func() { fmt.Println("Menu New->Directory") })
-	dirItem.Icon = theme.FolderIcon()
-	newItem.ChildMenu = fyne.NewMenu("",
-		fileItem,
-		dirItem,
-		otherItem,
-	)
+	//	newItem := fyne.NewMenuItem("New", nil)
+	//	checkedItem := fyne.NewMenuItem("Checked", nil)
+	//	checkedItem.Checked = true
+	//	disabledItem := fyne.NewMenuItem("Disabled", nil)
+	//	disabledItem.Disabled = true
+	//	otherItem := fyne.NewMenuItem("Other", nil)
+	//	mailItem := fyne.NewMenuItem("Mail", func() { fmt.Println("Menu New->Other->Mail") })
+	//	mailItem.Icon = theme.MailComposeIcon()
+	//	otherItem.ChildMenu = fyne.NewMenu("",
+	//		fyne.NewMenuItem("Project", func() { fmt.Println("Menu New->Other->Project") }),
+	//		mailItem,
+	//	)
+	//	fileItem := fyne.NewMenuItem("File", func() { fmt.Println("Menu New->File") })
+	//	fileItem.Icon = theme.FileIcon()
+	//	dirItem := fyne.NewMenuItem("Directory", func() { fmt.Println("Menu New->Directory") })
+	//	dirItem.Icon = theme.FolderIcon()
+	//	newItem.ChildMenu = fyne.NewMenu("",
+	//		fileItem,
+	//		dirItem,
+	//		otherItem,
+	//	)
 
 	openSettings := func() {
-		w := a.NewWindow("Fyne Settings")
+		w := a.NewWindow("Appearence")
 		w.SetContent(settings.NewSettings().LoadAppearanceScreen(w))
 		w.Resize(fyne.NewSize(480, 480))
 		w.Show()
 	}
-	settingsItem := fyne.NewMenuItem("Settings", openSettings)
+	settingsItem := fyne.NewMenuItem("appearence", openSettings)
 	settingsShortcut := &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierShortcutDefault}
 	settingsItem.Shortcut = settingsShortcut
 	w.Canvas().AddShortcut(settingsShortcut, func(shortcut fyne.Shortcut) {
 		openSettings()
 	})
 
-	cutShortcut := &fyne.ShortcutCut{Clipboard: w.Clipboard()}
-	cutItem := fyne.NewMenuItem("Cut", func() {
-		shortcutFocused(cutShortcut, w)
-	})
-	cutItem.Shortcut = cutShortcut
-	copyShortcut := &fyne.ShortcutCopy{Clipboard: w.Clipboard()}
-	copyItem := fyne.NewMenuItem("Copy", func() {
-		shortcutFocused(copyShortcut, w)
-	})
-	copyItem.Shortcut = copyShortcut
-	pasteShortcut := &fyne.ShortcutPaste{Clipboard: w.Clipboard()}
-	pasteItem := fyne.NewMenuItem("Paste", func() {
-		shortcutFocused(pasteShortcut, w)
-	})
-	pasteItem.Shortcut = pasteShortcut
-	performFind := func() { fmt.Println("Menu Find") }
-	findItem := fyne.NewMenuItem("Find", performFind)
-	findItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyF, Modifier: fyne.KeyModifierShortcutDefault | fyne.KeyModifierAlt | fyne.KeyModifierShift | fyne.KeyModifierControl | fyne.KeyModifierSuper}
-	w.Canvas().AddShortcut(findItem.Shortcut, func(shortcut fyne.Shortcut) {
-		performFind()
-	})
-
-	helpMenu := fyne.NewMenu("Help",
-		fyne.NewMenuItem("Documentation", func() {
-			u, _ := url.Parse("https://developer.fyne.io")
-			_ = a.OpenURL(u)
-		}),
-		fyne.NewMenuItem("Support", func() {
-			u, _ := url.Parse("https://fyne.io/support/")
-			_ = a.OpenURL(u)
-		}),
-		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Sponsor", func() {
-			u, _ := url.Parse("https://fyne.io/sponsor/")
-			_ = a.OpenURL(u)
-		}))
-
 	// a quit item will be appended to our first (File) menu
-	file := fyne.NewMenu("File", newItem, checkedItem, disabledItem)
+	file := fyne.NewMenu("Settings")
 	device := fyne.CurrentDevice()
 	if !device.IsMobile() && !device.IsBrowser() {
 		file.Items = append(file.Items, fyne.NewMenuItemSeparator(), settingsItem)
 	}
 	main := fyne.NewMainMenu(
 		file,
-		fyne.NewMenu("Edit", cutItem, copyItem, pasteItem, fyne.NewMenuItemSeparator(), findItem),
-		helpMenu,
+	//	fyne.NewMenu("Edit", cutItem, copyItem, pasteItem, fyne.NewMenuItemSeparator(), findItem),
+	//	helpMenu,
 	)
-	checkedItem.Action = func() {
-		checkedItem.Checked = !checkedItem.Checked
-		main.Refresh()
-	}
+	//	checkedItem.Action = func() {
+	//		checkedItem.Checked = !checkedItem.Checked
+	//		main.Refresh()
+	//	}
 	return main
 }
 
@@ -184,6 +152,7 @@ func makeTray(a fyne.App) {
 		h := fyne.NewMenuItem("Hello", func() {})
 		menu := fyne.NewMenu("Hello World", h)
 		h.Action = func() {
+			log.Println("System tray menu tapped")
 			h.Label = "Welcome"
 			menu.Refresh()
 		}
@@ -191,19 +160,19 @@ func makeTray(a fyne.App) {
 	}
 }
 
-func unsupportedTutorial(t snats.Tutorial) bool {
+func unsupportedTutorial(t panes.Panes) bool {
 	return !t.SupportWeb && fyne.CurrentDevice().IsBrowser()
 }
 
-func makeNav(setTutorial func(tutorial snats.Tutorial), loadPrevious bool) fyne.CanvasObject {
+func makeNav(setTutorial func(panes panes.Panes), loadPrevious bool) fyne.CanvasObject {
 	a := fyne.CurrentApp()
 
 	tree := &widget.Tree{
 		ChildUIDs: func(uid string) []string {
-			return snats.TutorialIndex[uid]
+			return panes.PanesIndex[uid]
 		},
 		IsBranch: func(uid string) bool {
-			children, ok := snats.TutorialIndex[uid]
+			children, ok := panes.PanesIndex[uid]
 
 			return ok && len(children) > 0
 		},
@@ -211,7 +180,7 @@ func makeNav(setTutorial func(tutorial snats.Tutorial), loadPrevious bool) fyne.
 			return widget.NewLabel("Collection Widgets")
 		},
 		UpdateNode: func(uid string, branch bool, obj fyne.CanvasObject) {
-			t, ok := snats.Tutorials[uid]
+			t, ok := panes.Panes[uid]
 			if !ok {
 				fyne.LogError("Missing tutorial panel: "+uid, nil)
 				return
@@ -224,7 +193,7 @@ func makeNav(setTutorial func(tutorial snats.Tutorial), loadPrevious bool) fyne.
 			}
 		},
 		OnSelected: func(uid string) {
-			if t, ok := snats.Tutorials[uid]; ok {
+			if t, ok := panes.Panes[uid]; ok {
 				if unsupportedTutorial(t) {
 					return
 				}
